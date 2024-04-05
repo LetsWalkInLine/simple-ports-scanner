@@ -1,0 +1,33 @@
+[profile]
+interface.ip = "172.19.68.53"
+gateway.mac = "80-05-88-77-6c-bc"
+
+#指定IP，全部端口
+[[target]]
+ip = "172.18.3.3"
+ports = "all"
+
+#指定IP，指定端口
+[[target]]
+ip = "172.31.248.26"
+ports = 8088
+
+#指定IP，指定端口组
+[[target]]
+ip = "172.31.248.26"
+ports = [8088, 443, 20, 31]
+
+#指定IP，指定端口范围
+[[target]]
+ip = "172.31.248.26"
+ports = { from = 20, to = 8088 }
+
+#指定IP组，其余同上
+[[target]]
+ip = ["172.18.3.3", "172.31.248.26"]
+ports = "all"
+
+#指定IP范围，其余同上
+[[target]]
+ip = { from = "172.18.3.3", to = "172.18.4.4" }
+ports = { from = 20, to = 8088 }
