@@ -2,15 +2,15 @@
 interface.ip = "172.19.65.53"
 gateway.mac = "80:05:88:77:6c:bc"
 
-# #指定IP，全部端口
-# [[target]]
-# ip = "172.31.248.26"
-# ports = "all"
-
-#指定IP，指定端口
+#指定IP，全部端口
 [[target]]
 ip = "172.31.248.26"
-ports = 8088
+ports = "all"
+
+# #指定IP，指定端口
+# [[target]]
+# ip = "172.31.248.26"
+# ports = 8088
 
 # #指定IP，指定端口组
 # [[target]]
