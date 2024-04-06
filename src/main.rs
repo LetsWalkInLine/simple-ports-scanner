@@ -1,4 +1,5 @@
 mod toml_parser;
+mod scanner;
 
 fn main() {
     let (interface_ip, gateway_mac, socket_addr) = toml_parser::parse("example/test.toml");
@@ -6,5 +7,7 @@ fn main() {
     println!("{}", interface_ip);
     println!("{}", gateway_mac);
     println!("{:?}", socket_addr);
+
+    scanner::test(interface_ip, gateway_mac, socket_addr);
 
 }

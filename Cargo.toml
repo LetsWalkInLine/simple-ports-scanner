@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 ipnet = "2.9.0"
+pnet = "0.34.0"
+rand = "0.8.5"
 toml = "0.8.12"

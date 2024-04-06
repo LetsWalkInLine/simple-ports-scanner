@@ -6,8 +6,9 @@ use std::{
 
 use ipnet::Ipv4AddrRange;
 use toml::{Table, Value};
+use pnet::util::MacAddr;
 
-pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, String, Vec<SocketAddrV4>) {
+pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<SocketAddrV4>) {
     let table: Table = fs::read_to_string(path).unwrap().parse().unwrap();
 
     let profile = table.get("profile").unwrap();
@@ -65,5 +66,6 @@ pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, String, Vec<SocketAddrV4>) {
             }
         }
     }
-    (interface_ip, String::from(gateway_mac), pairs)
+    
+    (interface_ip, gateway_mac.parse().unwrap(), pairs)
 }
