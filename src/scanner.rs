@@ -33,7 +33,7 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
     for dest_socket in socket_addr {
         let src_port = rand::thread_rng().gen_range(20000..=65535);
 
-        let packet = packet::build(
+        let packet_syn = packet::build(
             interface.mac.unwrap(),
             SocketAddrV4::new(interface_ip, src_port),
             dest_socket,
@@ -41,7 +41,15 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
             TcpFlags::SYN,
         );
 
-        tx.send_to(&packet, None).unwrap().unwrap();
+        let packet_rst = packet::build(
+            interface.mac.unwrap(),
+            SocketAddrV4::new(interface_ip, src_port),
+            dest_socket,
+            gateway_mac,
+            TcpFlags::RST,
+        );
+
+        tx.send_to(&packet_syn, None).unwrap().unwrap();
 
         let Ok(Channel::Ethernet(_, mut rx)) = datalink::channel(&interface, Default::default())
         else {
@@ -65,6 +73,7 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
 
                     if (tcp_flags & TcpFlags::SYN != 0) && (tcp_flags & TcpFlags::ACK != 0) {
                         println!("OPEN: {}", dest_socket);
+                        tx.send_to(&packet_rst, None).unwrap().unwrap();
                         break;
                     } else if tcp_flags & TcpFlags::RST != 0 {
                         println!("CLOSE: {}", dest_socket);
