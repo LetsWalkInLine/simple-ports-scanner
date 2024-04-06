@@ -6,7 +6,6 @@ fn main() {
 
     println!("{}", interface_ip);
     println!("{}", gateway_mac);
-    println!("{:?}", socket_addr);
 
     scanner::test(interface_ip, gateway_mac, socket_addr);
 

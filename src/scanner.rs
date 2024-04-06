@@ -1,4 +1,7 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddrV4},
+    time::{Duration, Instant},
+};
 
 use pnet::{
     datalink::{self, Channel},
@@ -45,6 +48,7 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
             panic!()
         };
 
+        let start_time = Instant::now();
         loop {
             let eth_packet = EthernetPacket::new(rx.next().unwrap()).unwrap();
             let ipv4_packet = Ipv4Packet::new(eth_packet.payload()).unwrap();
@@ -69,6 +73,9 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
                         println!("Ooops");
                     }
                 }
+            } else if Instant::now().duration_since(start_time) > Duration::from_micros(500) {
+                println!("Unknown: {}", dest_socket);
+                break;
             }
         }
     }
