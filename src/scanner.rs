@@ -66,6 +66,8 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
             TcpFlags::SYN,
         );
 
+        thread::sleep(Duration::from_micros(10));
+
         tx.send_to(&packet_syn, None).unwrap().unwrap();
     }
 
