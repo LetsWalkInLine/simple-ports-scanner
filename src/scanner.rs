@@ -31,7 +31,6 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
 
     let interface_clone = interface.clone();
     let gateway_mac_clone = gateway_mac.clone();
-    let socket_addr_clone = socket_addr.clone();
 
     let sockets_btree = get_btree(&socket_addr);
 
@@ -40,7 +39,7 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
     });
 
     let tx_thread = thread::spawn(move || {
-        send(interface_clone, gateway_mac_clone, socket_addr_clone);
+        send(interface_clone, gateway_mac_clone, socket_addr);
     });
 
     let _ = rx_thread.join().unwrap();
