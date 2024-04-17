@@ -1,21 +1,27 @@
+use std::net::{Ipv4Addr, SocketAddrV4};
+
 mod config;
 mod icmp_detector;
 mod scanner;
 mod toml_parser;
 
-use std::collections::HashSet;
-
 fn main() {
-    let (interface_ip, gateway_mac, socket_addr) = toml_parser::parse("example/test.toml");
+    let (interface_ip, gateway_mac, dest_ips, dest_ports) = toml_parser::parse("example/test.toml");
 
-    let dest_ips: Vec<_> = socket_addr
-        .iter()
-        .map(|x| x.ip().clone())
-        .collect::<HashSet<_>>()
-        .iter()
-        .map(|x| x.clone())
-        .collect();
+    icmp_detector::detect(interface_ip, gateway_mac, dest_ips.clone());
 
-    icmp_detector::detect(interface_ip, gateway_mac, dest_ips);
-    // scanner::scan(interface_ip, gateway_mac, socket_addr);
+    let socket_addr = get_socket_addr(&dest_ips, &dest_ports);
+    scanner::scan(interface_ip, gateway_mac, socket_addr);
+}
+
+fn get_socket_addr(dest_ips: &[Ipv4Addr], dest_ports: &[u16]) -> Vec<SocketAddrV4> {
+    let mut pairs = Vec::with_capacity(dest_ips.len() * dest_ports.len());
+
+    for ip in dest_ips {
+        for port in dest_ports {
+            pairs.push(SocketAddrV4::new(*ip, *port));
+        }
+    }
+
+    pairs
 }

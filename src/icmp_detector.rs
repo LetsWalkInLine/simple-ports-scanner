@@ -1,3 +1,5 @@
+mod packet;
+
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -17,7 +19,6 @@ use std::{
     time::Duration,
 };
 
-mod packet;
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
