@@ -1,6 +1,10 @@
+# [profile]
+# interface.ip = "172.19.65.53"
+# gateway.mac = "80:05:88:77:6c:bc"
+
 [profile]
-interface.ip = "172.19.65.53"
-gateway.mac = "80:05:88:77:6c:bc"
+interface.ip = "172.28.128.236"
+gateway.mac = "14:14:4b:7d:3f:60"
 
 #指定IP，全部端口
 [[target]]

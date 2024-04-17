@@ -22,7 +22,7 @@ mod packet;
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) {
+pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) {
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -72,7 +72,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
         thread::sleep(Duration::from_micros(1));
     }
 
-    thread::sleep(Duration::from_secs(1));
+    thread::sleep(Duration::from_millis(200));
 
     DONE.store(true, Ordering::SeqCst);
 }
