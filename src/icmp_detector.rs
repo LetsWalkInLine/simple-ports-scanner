@@ -19,10 +19,9 @@ use std::{
     time::Duration,
 };
 
-
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn detect(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ips: Vec<Ipv4Addr>) {
+pub fn detect(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ips: Vec<Ipv4Addr>) -> Vec<Ipv4Addr> {
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -33,15 +32,17 @@ pub fn detect(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ips: Vec<Ipv4Ad
     let dest_ip_clone = dest_ips.clone();
 
     let rx_thread = thread::spawn(move || {
-        receive(interface, dest_ips);
+        receive_and_filter(interface, dest_ips)
     });
 
     let tx_thread = thread::spawn(move || {
         send(interface_clone, gateway_mac_clone, dest_ip_clone);
     });
 
-    let _ = rx_thread.join().unwrap();
+    let reachable_ips = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
+
+    reachable_ips
 }
 
 fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv4Addr>) {
@@ -69,7 +70,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv
     DONE.store(true, Ordering::SeqCst);
 }
 
-fn receive(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) {
+fn receive_and_filter(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) -> Vec<Ipv4Addr> {
     let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
         panic!();
     };
@@ -77,6 +78,8 @@ fn receive(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) {
     let Ok(Channel::Ethernet(_, mut rx)) = datalink::channel(&interface, Default::default()) else {
         panic!()
     };
+
+    let mut reachable_ips = Vec::with_capacity(target_dests.len());
 
     loop {
         let raw_packet = rx.next().unwrap();
@@ -90,7 +93,11 @@ fn receive(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) {
             let icmp_packet = IcmpPacket::new(ipv4_packet.payload()).unwrap();
 
             if icmp_packet.get_icmp_type() == IcmpTypes::EchoReply {
-                println!("{} is reachable", ipv4_packet.get_source());
+                let from = ipv4_packet.get_source();
+
+                // println!("{} is reachable", from);
+
+                reachable_ips.push(from);
             }
         }
 
@@ -98,4 +105,6 @@ fn receive(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) {
             break;
         }
     }
+
+    reachable_ips
 }

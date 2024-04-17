@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    fs,
-    net::{Ipv4Addr, SocketAddrV4},
-    path::Path,
-};
+use std::{collections::BTreeSet, fs, net::Ipv4Addr, path::Path};
 
 use ipnet::Ipv4AddrRange;
 use pnet::util::MacAddr;
@@ -63,13 +58,13 @@ pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u
 
     let ip_vec = ip_vec
         .into_iter()
-        .collect::<HashSet<Ipv4Addr>>()
+        .collect::<BTreeSet<Ipv4Addr>>()
         .into_iter()
         .collect();
 
     let ports_vec = ports_vec
         .into_iter()
-        .collect::<HashSet<u16>>()
+        .collect::<BTreeSet<u16>>()
         .into_iter()
         .collect();
 

@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeSet,
     net::{IpAddr, Ipv4Addr, SocketAddrV4},
     sync::atomic::{AtomicBool, Ordering},
     thread,
@@ -32,8 +33,10 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
     let gateway_mac_clone = gateway_mac.clone();
     let socket_addr_clone = socket_addr.clone();
 
+    let sockets_btree = get_btree(&socket_addr);
+
     let rx_thread = thread::spawn(move || {
-        receive(interface, gateway_mac, socket_addr);
+        receive(interface, gateway_mac, sockets_btree);
     });
 
     let tx_thread = thread::spawn(move || {
@@ -42,6 +45,10 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
 
     let _ = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
+}
+
+fn get_btree(target_sockets: &[SocketAddrV4]) -> BTreeSet<SocketAddrV4> {
+    target_sockets.iter().map(|x| *x).collect()
 }
 
 fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<SocketAddrV4>) {
@@ -56,7 +63,6 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
     };
 
     for dest_socket in target_sockets {
-
         let src_port = rand::thread_rng().gen_range(20000..=65535);
 
         let packet_syn = packet::build(
@@ -77,7 +83,11 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
     DONE.store(true, Ordering::SeqCst);
 }
 
-fn receive(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<SocketAddrV4>) {
+fn receive(
+    interface: NetworkInterface,
+    gateway_mac: MacAddr,
+    target_sockets: BTreeSet<SocketAddrV4>,
+) {
     let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
         panic!();
     };

@@ -8,9 +8,9 @@ mod toml_parser;
 fn main() {
     let (interface_ip, gateway_mac, dest_ips, dest_ports) = toml_parser::parse("example/test.toml");
 
-    icmp_detector::detect(interface_ip, gateway_mac, dest_ips.clone());
+    let reachable_ips = icmp_detector::detect(interface_ip, gateway_mac, dest_ips.clone());
 
-    let socket_addr = get_socket_addr(&dest_ips, &dest_ports);
+    let socket_addr = get_socket_addr(&reachable_ips, &dest_ports);
     scanner::scan(interface_ip, gateway_mac, socket_addr);
 }
 
