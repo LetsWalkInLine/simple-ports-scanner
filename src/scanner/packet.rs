@@ -10,9 +10,7 @@ use pnet::{
     util::MacAddr,
 };
 
-const IPV4_HEADER_LEN: usize = 20;
-// const IPV6_HEADER_LEN: usize = 40;
-const ETHERNET_HEADER_LEN: usize = 14;
+use crate::config::{ETHERNET_HEADER_LEN, IPV4_HEADER_LEN};
 
 pub fn build(
     src_mac: MacAddr,

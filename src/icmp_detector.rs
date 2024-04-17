@@ -1,10 +1,3 @@
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddrV4},
-    sync::atomic::{AtomicBool, Ordering},
-    thread,
-    time::Duration,
-};
-
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -16,13 +9,19 @@ use pnet::{
     },
     util::MacAddr,
 };
-use rand::Rng;
+
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddrV4},
+    sync::atomic::{AtomicBool, Ordering},
+    thread,
+    time::Duration,
+};
 
 mod packet;
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) {
+pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ip: Vec<Ipv4Addr>) {
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -30,21 +29,21 @@ pub fn test(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
 
     let interface_clone = interface.clone();
     let gateway_mac_clone = gateway_mac.clone();
-    let socket_addr_clone = socket_addr.clone();
+    let dest_ip_clone = dest_ip.clone();
 
     let rx_thread = thread::spawn(move || {
-        receive(interface, gateway_mac, socket_addr);
+        receive(interface, gateway_mac, dest_ip);
     });
 
     let tx_thread = thread::spawn(move || {
-        send(interface_clone, gateway_mac_clone, socket_addr_clone);
+        send(interface_clone, gateway_mac_clone, dest_ip);
     });
 
     let _ = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
 }
 
-fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<SocketAddrV4>) {
+fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv4Addr>) {
     let (mut tx, _) = match datalink::channel(&interface, Default::default()) {
         Ok(Channel::Ethernet(tx, rx)) => (tx, rx),
         Ok(_) => panic!("Unknown channel type!"),
@@ -55,20 +54,16 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
         panic!();
     };
 
-    for dest_socket in target_sockets {
+    for dest_ip in target_dests {
 
-        let src_port = rand::thread_rng().gen_range(20000..=65535);
-
-        let packet_syn = packet::build(
+        let packet_icmp = packet::build(
             interface.mac.unwrap(),
-            SocketAddrV4::new(src_ip, src_port),
-            dest_socket,
+            src_ip,
+            dest_ip,
             gateway_mac,
-            TcpFlags::SYN,
         );
 
-        tx.send_to(&packet_syn, None).unwrap().unwrap();
-
+        tx.send_to(&packet_icmp, None).unwrap().unwrap();
         thread::sleep(Duration::from_micros(1));
     }
 
@@ -77,7 +72,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
     DONE.store(true, Ordering::SeqCst);
 }
 
-fn receive(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<SocketAddrV4>) {
+fn receive(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv4Addr>) {
     let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
         panic!();
     };
