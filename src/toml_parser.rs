@@ -4,6 +4,8 @@ use ipnet::Ipv4AddrRange;
 use pnet::util::MacAddr;
 use toml::{Table, Value};
 
+use crate::config;
+
 pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u16>) {
     let table: Table = fs::read_to_string(path).unwrap().parse().unwrap();
 
@@ -51,7 +53,16 @@ pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u
                 let to = ports.get("to").unwrap().as_integer().unwrap() as u16;
                 (from..=to).for_each(|x| ports_vec.push(x));
             }
-            Value::String(_) => (0..=65535).for_each(|x| ports_vec.push(x)),
+            Value::String(s) => {
+                if s == "all" {
+                    (0..=65535).for_each(|x| ports_vec.push(x));
+                } else if s == "known" {
+                    let ports_known = config::get_ports_known();
+                    ports_vec.extend_from_slice(ports_known);
+                } else {
+                    panic!("Unsupported ports type");
+                }
+            }
             _ => panic!("Unsupported ports type"),
         }
     }

@@ -1,3 +1,4 @@
+mod ports;
 
 pub const IPV4_HEADER_LEN: usize = 20;
 
@@ -6,3 +7,5 @@ pub const IPV4_HEADER_LEN: usize = 20;
 pub const ETHERNET_HEADER_LEN: usize = 14;
 
 pub const ICMP_ECHO_REQUEST_LEN: usize = 8;
+
+pub use ports::{get_port_name, get_ports_known};

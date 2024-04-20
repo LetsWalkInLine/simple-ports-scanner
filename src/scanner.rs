@@ -23,7 +23,7 @@ mod packet;
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) {
+pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -34,16 +34,16 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
 
     let sockets_btree = get_btree(&socket_addr);
 
-    let rx_thread = thread::spawn(move || {
-        receive(interface, gateway_mac, sockets_btree);
-    });
+    let rx_thread = thread::spawn(move || receive(interface, gateway_mac, sockets_btree));
 
     let tx_thread = thread::spawn(move || {
         send(interface_clone, gateway_mac_clone, socket_addr);
     });
 
-    let _ = rx_thread.join().unwrap();
+    let (open_ports, filtered_ports) = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
+
+    (open_ports, filtered_ports)
 }
 
 fn get_btree(target_sockets: &[SocketAddrV4]) -> BTreeSet<SocketAddrV4> {
@@ -85,8 +85,8 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
 fn receive(
     interface: NetworkInterface,
     gateway_mac: MacAddr,
-    target_sockets: BTreeSet<SocketAddrV4>,
-) {
+    mut target_sockets: BTreeSet<SocketAddrV4>,
+) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
     let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
         panic!();
     };
@@ -95,6 +95,9 @@ fn receive(
     else {
         panic!()
     };
+
+    let mut open_ports = Vec::new();
+    let mut filtered_ports = Vec::new();
 
     loop {
         let eth_packet = EthernetPacket::new(rx.next().unwrap()).unwrap();
@@ -114,6 +117,8 @@ fn receive(
 
                 if (tcp_flags & TcpFlags::SYN != 0) && (tcp_flags & TcpFlags::ACK != 0) {
                     println!("OPEN: {}", target_socket);
+                    open_ports.push(target_socket);
+                    target_sockets.remove(&target_socket);
 
                     let packet_rst = packet::build(
                         interface.mac.unwrap(),
@@ -125,9 +130,7 @@ fn receive(
 
                     tx.send_to(&packet_rst, None).unwrap().unwrap();
                 } else if tcp_flags & TcpFlags::RST != 0 {
-                    // println!("CLOSE: {}", target_socket);
-                } else {
-                    println!("Ooops");
+                    target_sockets.remove(&target_socket);
                 }
             }
         }
@@ -136,4 +139,8 @@ fn receive(
             break;
         }
     }
+
+    filtered_ports.append(&mut target_sockets.into_iter().collect::<Vec<SocketAddrV4>>());
+
+    (open_ports, filtered_ports)
 }
