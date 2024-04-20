@@ -1,19 +1,23 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
-
 mod config;
 mod icmp_detector;
 mod scanner;
 mod toml_parser;
 
+use std::net::{Ipv4Addr, SocketAddrV4};
+
 fn main() {
-    let (interface_ip, gateway_mac, dest_ips, dest_ports) = toml_parser::parse("example/test.toml");
+    let profile = toml_parser::parse("example/test.toml");
 
-    let reachable_ips = icmp_detector::detect(interface_ip, gateway_mac, dest_ips.clone());
+    let reachable_ips = icmp_detector::detect(
+        profile.interface_ip,
+        profile.gateway_mac,
+        profile.ip_vec.clone(),
+    );
 
-    let socket_addr = get_socket_addr(&reachable_ips, &dest_ports);
+    let socket_addr = get_socket_addr(&reachable_ips, &profile.ports_vec);
 
     let (open_ports, closed_ports, filtered_ports) =
-        scanner::scan(interface_ip, gateway_mac, socket_addr);
+        scanner::scan(profile.interface_ip, profile.gateway_mac, socket_addr);
 
     // for item in filtered_ports {
 

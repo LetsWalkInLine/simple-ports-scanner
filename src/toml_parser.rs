@@ -6,13 +6,43 @@ use toml::{Table, Value};
 
 use crate::config;
 
+pub struct Profile {
+    pub interface_ip: Ipv4Addr,
+    pub gateway_mac: MacAddr,
+    pub ip_vec: Vec<Ipv4Addr>,
+    pub ports_vec: Vec<u16>,
+    pub show_open: bool,
+    pub show_closed: bool,
+    pub show_filtered: bool,
+}
+impl Profile {
+    fn new(
+        interface_ip: Ipv4Addr,
+        gateway_mac: MacAddr,
+        ip_vec: Vec<Ipv4Addr>,
+        ports_vec: Vec<u16>,
+        show_open: bool,
+        show_closed: bool,
+        show_filtered: bool,
+    ) -> Self {
+        Profile {
+            interface_ip,
+            gateway_mac,
+            ip_vec,
+            ports_vec,
+            show_open,
+            show_closed,
+            show_filtered,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ShowRule {
     open: bool,
     closed: bool,
     filtered: bool,
 }
-
 impl Default for ShowRule {
     fn default() -> Self {
         ShowRule {
@@ -23,14 +53,22 @@ impl Default for ShowRule {
     }
 }
 
-pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u16>) {
+pub fn parse(path: impl AsRef<Path>) -> Profile {
     let table: Table = fs::read_to_string(path).unwrap().parse().unwrap();
 
     let (interface_ip, gateway_mac, show_rules) = parse_profile(&table);
 
     let (ip_vec, ports_vec) = parse_targets(&table);
 
-    (interface_ip, gateway_mac, ip_vec, ports_vec)
+    Profile::new(
+        interface_ip,
+        gateway_mac,
+        ip_vec,
+        ports_vec,
+        show_rules.open,
+        show_rules.closed,
+        show_rules.filtered,
+    )
 }
 
 fn parse_profile(table: &Table) -> (Ipv4Addr, MacAddr, ShowRule) {
@@ -59,7 +97,7 @@ fn parse_profile(table: &Table) -> (Ipv4Addr, MacAddr, ShowRule) {
         };
 
         let show_filtered = if let Some(filtered) = show_table.get("filtered") {
-            filtered.as_bool().expect("show rules error: closed!!")
+            filtered.as_bool().expect("show rules error: filtered!!")
         } else {
             false
         };
