@@ -1,4 +1,5 @@
 mod config;
+mod display;
 mod icmp_detector;
 mod scanner;
 mod toml_parser;
@@ -19,13 +20,14 @@ fn main() {
     let (open_ports, closed_ports, filtered_ports) =
         scanner::scan(profile.interface_ip, profile.gateway_mac, socket_addr);
 
-    // for item in filtered_ports {
-
-    //     if item.port() > 49151 {
-    //         break;
-    //     }
-    //     println!("filtered: {}, {}", item, config::get_port_name(item.port()));
-    // }
+    display::display(
+        open_ports,
+        closed_ports,
+        filtered_ports,
+        profile.show_open,
+        profile.show_closed,
+        profile.show_filtered,
+    );
 }
 
 fn get_socket_addr(dest_ips: &[Ipv4Addr], dest_ports: &[u16]) -> Vec<SocketAddrV4> {
