@@ -46,7 +46,7 @@ struct ShowRule {
 impl Default for ShowRule {
     fn default() -> Self {
         ShowRule {
-            open: false,
+            open: true,
             closed: false,
             filtered: false,
         }
