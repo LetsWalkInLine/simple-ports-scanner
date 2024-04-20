@@ -23,11 +23,15 @@ mod packet;
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<SocketAddrV4>) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
+pub fn scan(
+    interface_ip: Ipv4Addr,
+    gateway_mac: MacAddr,
+    socket_addr: Vec<SocketAddrV4>,
+) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
     let interface = datalink::interfaces()
         .into_iter()
-        .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
-        .unwrap();
+        .find(|x| x.ips.first().expect("interface ip error!").ip() == IpAddr::V4(interface_ip))
+        .expect("can not find the interface!!");
 
     let interface_clone = interface.clone();
     let gateway_mac_clone = gateway_mac.clone();
@@ -40,10 +44,11 @@ pub fn scan(interface_ip: Ipv4Addr, gateway_mac: MacAddr, socket_addr: Vec<Socke
         send(interface_clone, gateway_mac_clone, socket_addr);
     });
 
-    let (open_ports, filtered_ports) = rx_thread.join().unwrap();
-    let _ = tx_thread.join().unwrap();
+    let (open_ports, closed_ports, filtered_ports) =
+        rx_thread.join().expect("receive thread error!");
+    let _ = tx_thread.join().expect("send thread error");
 
-    (open_ports, filtered_ports)
+    (open_ports, closed_ports, filtered_ports)
 }
 
 fn get_btree(target_sockets: &[SocketAddrV4]) -> BTreeSet<SocketAddrV4> {
@@ -57,7 +62,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
         Err(e) => panic!("Error happened: {}", e),
     };
 
-    let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
+    let IpAddr::V4(src_ip) = interface.ips.first().expect("interface ip error!").ip() else {
         panic!();
     };
 
@@ -65,7 +70,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
         let src_port = rand::thread_rng().gen_range(20000..=65535);
 
         let packet_syn = packet::build(
-            interface.mac.unwrap(),
+            interface.mac.expect("interface MAC error!"),
             SocketAddrV4::new(src_ip, src_port),
             dest_socket,
             gateway_mac,
@@ -86,8 +91,8 @@ fn receive(
     interface: NetworkInterface,
     gateway_mac: MacAddr,
     mut target_sockets: BTreeSet<SocketAddrV4>,
-) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
-    let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
+) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
+    let IpAddr::V4(src_ip) = interface.ips.first().expect("interface ip error!").ip() else {
         panic!();
     };
 
@@ -98,9 +103,11 @@ fn receive(
 
     let mut open_ports = Vec::new();
     let mut filtered_ports = Vec::new();
+    let mut closed_ports = Vec::new();
 
     loop {
         let eth_packet = EthernetPacket::new(rx.next().unwrap()).unwrap();
+
         let ipv4_packet = Ipv4Packet::new(eth_packet.payload()).unwrap();
 
         if ipv4_packet.get_next_level_protocol() == IpNextHeaderProtocols::Tcp
@@ -115,7 +122,7 @@ fn receive(
             if target_sockets.contains(&target_socket) {
                 let tcp_flags = tcp_packet.get_flags();
 
-                if (tcp_flags & TcpFlags::SYN != 0) && (tcp_flags & TcpFlags::ACK != 0) {
+                if is_ack_syn(tcp_flags) {
                     println!("OPEN: {}", target_socket);
                     open_ports.push(target_socket);
                     target_sockets.remove(&target_socket);
@@ -129,7 +136,8 @@ fn receive(
                     );
 
                     tx.send_to(&packet_rst, None).unwrap().unwrap();
-                } else if tcp_flags & TcpFlags::RST != 0 {
+                } else if is_rst(tcp_flags) {
+                    closed_ports.push(target_socket);
                     target_sockets.remove(&target_socket);
                 }
             }
@@ -142,5 +150,13 @@ fn receive(
 
     filtered_ports.append(&mut target_sockets.into_iter().collect::<Vec<SocketAddrV4>>());
 
-    (open_ports, filtered_ports)
+    (open_ports, closed_ports, filtered_ports)
+}
+
+fn is_ack_syn(tcp_flags: u8) -> bool {
+    (tcp_flags & TcpFlags::SYN != 0) && (tcp_flags & TcpFlags::ACK != 0)
+}
+
+fn is_rst(tcp_flags: u8) -> bool {
+    tcp_flags & TcpFlags::RST != 0
 }

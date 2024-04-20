@@ -12,7 +12,8 @@ fn main() {
 
     let socket_addr = get_socket_addr(&reachable_ips, &dest_ports);
 
-    let (open_ports, filtered_ports) = scanner::scan(interface_ip, gateway_mac, socket_addr);
+    let (open_ports, closed_ports, filtered_ports) =
+        scanner::scan(interface_ip, gateway_mac, socket_addr);
 
     // for item in filtered_ports {
 
