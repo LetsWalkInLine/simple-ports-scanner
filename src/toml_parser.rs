@@ -28,6 +28,54 @@ pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u
 
     let (interface_ip, gateway_mac, show_rules) = parse_profile(&table);
 
+    let (ip_vec, ports_vec) = parse_targets(&table);
+
+    (interface_ip, gateway_mac, ip_vec, ports_vec)
+}
+
+fn parse_profile(table: &Table) -> (Ipv4Addr, MacAddr, ShowRule) {
+    let profile = table.get("profile").unwrap();
+
+    let Value::String(interface_ip) = profile.get("interface").unwrap().get("ip").unwrap() else {
+        panic!("can not find interface ip");
+    };
+    let Value::String(gateway_mac) = profile.get("gateway").unwrap().get("mac").unwrap() else {
+        panic!("can not find gateway mac");
+    };
+
+    let mut rule = ShowRule::default();
+
+    if let Some(show_table) = profile.get("show") {
+        let show_open = if let Some(open) = show_table.get("open") {
+            open.as_bool().expect("show rules error: open!!")
+        } else {
+            false
+        };
+
+        let show_closed = if let Some(closed) = show_table.get("close") {
+            closed.as_bool().expect("show rules error: closed!!")
+        } else {
+            false
+        };
+
+        let show_filtered = if let Some(filtered) = show_table.get("filtered") {
+            filtered.as_bool().expect("show rules error: closed!!")
+        } else {
+            false
+        };
+
+        rule.open = show_open;
+        rule.filtered = show_filtered;
+        rule.closed = show_closed;
+    }
+
+    let interface_ip: Ipv4Addr = interface_ip.parse().unwrap();
+    let gateway_mac: MacAddr = gateway_mac.parse().unwrap();
+
+    (interface_ip, gateway_mac, rule)
+}
+
+fn parse_targets(table: &Table) -> (Vec<Ipv4Addr>, Vec<u16>) {
     let targets = table.get("target").unwrap().as_array().unwrap();
 
     let mut ip_vec: Vec<Ipv4Addr> = Vec::new();
@@ -95,47 +143,5 @@ pub fn parse(path: impl AsRef<Path>) -> (Ipv4Addr, MacAddr, Vec<Ipv4Addr>, Vec<u
         .into_iter()
         .collect();
 
-    (interface_ip, gateway_mac, ip_vec, ports_vec)
-}
-
-fn parse_profile(table: &Table) -> (Ipv4Addr, MacAddr, ShowRule) {
-    let profile = table.get("profile").unwrap();
-
-    let Value::String(interface_ip) = profile.get("interface").unwrap().get("ip").unwrap() else {
-        panic!("can not find interface ip");
-    };
-    let Value::String(gateway_mac) = profile.get("gateway").unwrap().get("mac").unwrap() else {
-        panic!("can not find gateway mac");
-    };
-
-    let mut rule = ShowRule::default();
-
-    if let Some(show_table) = profile.get("show") {
-        let show_open = if let Some(open) = show_table.get("open") {
-            open.as_bool().expect("show rules error: open!!")
-        } else {
-            false
-        };
-
-        let show_closed = if let Some(closed) = show_table.get("close") {
-            closed.as_bool().expect("show rules error: closed!!")
-        } else {
-            false
-        };
-
-        let show_filtered = if let Some(filtered) = show_table.get("filtered") {
-            filtered.as_bool().expect("show rules error: closed!!")
-        } else {
-            false
-        };
-
-        rule.open = show_open;
-        rule.filtered = show_filtered;
-        rule.closed = show_closed;
-    }
-
-    let interface_ip: Ipv4Addr = interface_ip.parse().unwrap();
-    let gateway_mac: MacAddr = gateway_mac.parse().unwrap();
-
-    (interface_ip, gateway_mac, rule)
+    (ip_vec, ports_vec)
 }
