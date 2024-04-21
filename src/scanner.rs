@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use indicatif::{ProgressBar, WeakProgressBar};
+use indicatif::{ProgressBar, ProgressStyle, WeakProgressBar};
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -40,6 +40,14 @@ pub fn scan(
     let sockets_btree = get_btree(&socket_addr);
 
     let pb = ProgressBar::new(socket_addr.len() as u64);
+    pb.set_message("SCANNING");
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.cyan/blue}{msg:.blue} [{elapsed}] [{wide_bar:.cyan/blue}]) [{pos}/{len}]",
+        )
+        .unwrap()
+        .progress_chars("#>-"),
+    );
     let rx_pb = pb.downgrade();
     let tx_pb = pb.downgrade();
 
@@ -53,7 +61,7 @@ pub fn scan(
         rx_thread.join().expect("receive thread error!");
     let _ = tx_thread.join().expect("send thread error");
 
-    pb.finish();
+    pb.finish_with_message("DONE");
 
     (open_ports, closed_ports, filtered_ports)
 }
