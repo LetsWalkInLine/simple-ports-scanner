@@ -1,6 +1,6 @@
 mod packet;
 
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, WeakProgressBar};
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -36,19 +36,30 @@ pub fn detect(
     let gateway_mac_clone = gateway_mac.clone();
     let dest_ip_clone = dest_ips.clone();
 
-    let rx_thread = thread::spawn(move || receive_and_filter(interface, dest_ips));
+    let pb = ProgressBar::new(dest_ips.len() as u64);
+    let rx_pb = pb.downgrade();
+    let tx_pb = pb.downgrade();
+
+    let rx_thread = thread::spawn(move || receive_and_filter(interface, dest_ips, rx_pb));
 
     let tx_thread = thread::spawn(move || {
-        send(interface_clone, gateway_mac_clone, dest_ip_clone);
+        send(interface_clone, gateway_mac_clone, dest_ip_clone, tx_pb);
     });
 
     let reachable_ips = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
 
+    pb.finish_and_clear();
+
     reachable_ips
 }
 
-fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv4Addr>) {
+fn send(
+    interface: NetworkInterface,
+    gateway_mac: MacAddr,
+    target_dests: Vec<Ipv4Addr>,
+    pb: WeakProgressBar,
+) {
     let (mut tx, _) = match datalink::channel(&interface, Default::default()) {
         Ok(Channel::Ethernet(tx, rx)) => (tx, rx),
         Ok(_) => panic!("Unknown channel type!"),
@@ -61,24 +72,25 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv
 
     let interface_mac = interface.mac.unwrap();
 
-    let pb = ProgressBar::new(target_dests.len() as u64);
     for dest_ip in target_dests {
         let packet_icmp = packet::build(interface_mac, src_ip, dest_ip, gateway_mac);
 
         tx.send_to(&packet_icmp, None).unwrap().unwrap();
-        pb.inc(1);
+        pb.upgrade().unwrap().inc(1);
 
         thread::sleep(Duration::from_micros(1));
     }
 
     thread::sleep(Duration::from_millis(200));
 
-    pb.finish();
-
     DONE.store(true, Ordering::SeqCst);
 }
 
-fn receive_and_filter(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) -> Vec<Ipv4Addr> {
+fn receive_and_filter(
+    interface: NetworkInterface,
+    target_dests: Vec<Ipv4Addr>,
+    pb: WeakProgressBar,
+) -> Vec<Ipv4Addr> {
     let IpAddr::V4(src_ip) = interface.ips.first().unwrap().ip() else {
         panic!();
     };
@@ -103,7 +115,9 @@ fn receive_and_filter(interface: NetworkInterface, target_dests: Vec<Ipv4Addr>) 
             if icmp_packet.get_icmp_type() == IcmpTypes::EchoReply {
                 let from = ipv4_packet.get_source();
 
-                // println!("{} is reachable", from);
+                pb.upgrade()
+                    .unwrap()
+                    .println(format!("{} is reachable", from));
 
                 reachable_ips.push(from);
             }
