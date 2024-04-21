@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use indicatif::{ProgressBar, WeakProgressBar};
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -38,15 +39,21 @@ pub fn scan(
 
     let sockets_btree = get_btree(&socket_addr);
 
-    let rx_thread = thread::spawn(move || receive(interface, gateway_mac, sockets_btree));
+    let pb = ProgressBar::new(socket_addr.len() as u64);
+    let rx_pb = pb.downgrade();
+    let tx_pb = pb.downgrade();
+
+    let rx_thread = thread::spawn(move || receive(interface, gateway_mac, sockets_btree, rx_pb));
 
     let tx_thread = thread::spawn(move || {
-        send(interface_clone, gateway_mac_clone, socket_addr);
+        send(interface_clone, gateway_mac_clone, socket_addr, tx_pb);
     });
 
     let (open_ports, closed_ports, filtered_ports) =
         rx_thread.join().expect("receive thread error!");
     let _ = tx_thread.join().expect("send thread error");
+
+    pb.finish();
 
     (open_ports, closed_ports, filtered_ports)
 }
@@ -55,7 +62,12 @@ fn get_btree(target_sockets: &[SocketAddrV4]) -> BTreeSet<SocketAddrV4> {
     target_sockets.iter().map(|x| *x).collect()
 }
 
-fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<SocketAddrV4>) {
+fn send(
+    interface: NetworkInterface,
+    gateway_mac: MacAddr,
+    target_sockets: Vec<SocketAddrV4>,
+    pb: WeakProgressBar,
+) {
     let (mut tx, _) = match datalink::channel(&interface, Default::default()) {
         Ok(Channel::Ethernet(tx, rx)) => (tx, rx),
         Ok(_) => panic!("Unknown channel type!"),
@@ -78,6 +90,7 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_sockets: Vec<S
         );
 
         tx.send_to(&packet_syn, None).unwrap().unwrap();
+        pb.upgrade().unwrap().inc(1);
 
         thread::sleep(Duration::from_micros(1));
     }
@@ -91,6 +104,7 @@ fn receive(
     interface: NetworkInterface,
     gateway_mac: MacAddr,
     mut target_sockets: BTreeSet<SocketAddrV4>,
+    pb: WeakProgressBar,
 ) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
     let IpAddr::V4(src_ip) = interface.ips.first().expect("interface ip error!").ip() else {
         panic!();
@@ -123,7 +137,9 @@ fn receive(
                 let tcp_flags = tcp_packet.get_flags();
 
                 if is_ack_syn(tcp_flags) {
-                    println!("OPEN: {}", target_socket);
+                    pb.upgrade()
+                        .unwrap()
+                        .println(format!("OPEN: {}", target_socket));
                     open_ports.push(target_socket);
                     target_sockets.remove(&target_socket);
 

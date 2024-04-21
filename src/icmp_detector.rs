@@ -1,5 +1,6 @@
 mod packet;
 
+use indicatif::ProgressBar;
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -21,7 +22,11 @@ use std::{
 
 static DONE: AtomicBool = AtomicBool::new(false);
 
-pub fn detect(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ips: Vec<Ipv4Addr>) -> Vec<Ipv4Addr> {
+pub fn detect(
+    interface_ip: Ipv4Addr,
+    gateway_mac: MacAddr,
+    dest_ips: Vec<Ipv4Addr>,
+) -> Vec<Ipv4Addr> {
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -31,9 +36,7 @@ pub fn detect(interface_ip: Ipv4Addr, gateway_mac: MacAddr, dest_ips: Vec<Ipv4Ad
     let gateway_mac_clone = gateway_mac.clone();
     let dest_ip_clone = dest_ips.clone();
 
-    let rx_thread = thread::spawn(move || {
-        receive_and_filter(interface, dest_ips)
-    });
+    let rx_thread = thread::spawn(move || receive_and_filter(interface, dest_ips));
 
     let tx_thread = thread::spawn(move || {
         send(interface_clone, gateway_mac_clone, dest_ip_clone);
@@ -58,14 +61,19 @@ fn send(interface: NetworkInterface, gateway_mac: MacAddr, target_dests: Vec<Ipv
 
     let interface_mac = interface.mac.unwrap();
 
+    let pb = ProgressBar::new(target_dests.len() as u64);
     for dest_ip in target_dests {
         let packet_icmp = packet::build(interface_mac, src_ip, dest_ip, gateway_mac);
 
         tx.send_to(&packet_icmp, None).unwrap().unwrap();
+        pb.inc(1);
+
         thread::sleep(Duration::from_micros(1));
     }
 
     thread::sleep(Duration::from_millis(200));
+
+    pb.finish();
 
     DONE.store(true, Ordering::SeqCst);
 }
