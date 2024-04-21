@@ -46,18 +46,44 @@ pub fn display(
     writeln!(file, "filtered = {}", filtered_ports.len()).unwrap();
     writeln!(file).unwrap();
 
-    writeln!(file, "[[target]]").unwrap();
+    for (target_ip, target_states) in tree {
+        writeln!(file, "[[target]]").unwrap();
+        writeln!(file, "ip = \"{}\"", target_ip).unwrap();
+        writeln!(file).unwrap();
 
-    if show_open {
-        writeln!(file, "{:#?}", open_ports).unwrap();
-    }
+        if show_open {
+            writeln!(file, "open = [").unwrap();
 
-    if show_closed {
-        writeln!(file, "{:#?}", closed_ports).unwrap();
-    }
+            target_states.open.iter().for_each(|(port, name)| {
+                writeln!(file, "    {{ port = {}, name = \"{}\" }},", port, name).unwrap()
+            });
 
-    if show_filtered {
-        writeln!(file, "{:#?}", filtered_ports).unwrap();
+            writeln!(file, "]").unwrap();
+        }
+
+        writeln!(file).unwrap();
+
+        if show_closed {
+            writeln!(file, "closed = [").unwrap();
+
+            target_states.closed.iter().for_each(|(port, name)| {
+                writeln!(file, "    {{ port = {}, name = \"{}\" }},", port, name).unwrap()
+            });
+
+            writeln!(file, "]").unwrap();
+        }
+
+        if show_filtered {
+            writeln!(file, "filtered = [").unwrap();
+
+            target_states.filtered.iter().for_each(|(port, name)| {
+                writeln!(file, "    {{ port = {}, name = \"{}\" }},", port, name).unwrap()
+            });
+
+            writeln!(file, "]").unwrap();
+        }
+
+        writeln!(file).unwrap();
     }
 }
 
@@ -72,7 +98,7 @@ fn get_info_tree(
         tree.entry(*x.ip())
             .and_modify(|v| {
                 v.open
-                    .push((x.port(), get_port_name(x.port()).unwrap_or("Known")))
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
             .or_insert(TargetStates::new());
     });
@@ -81,7 +107,7 @@ fn get_info_tree(
         tree.entry(*x.ip())
             .and_modify(|v| {
                 v.closed
-                    .push((x.port(), get_port_name(x.port()).unwrap_or("Known")))
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
             .or_insert(TargetStates::new());
     });
@@ -90,7 +116,7 @@ fn get_info_tree(
         tree.entry(*x.ip())
             .and_modify(|v| {
                 v.filtered
-                    .push((x.port(), get_port_name(x.port()).unwrap_or("Known")))
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
             .or_insert(TargetStates::new());
     });
