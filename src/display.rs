@@ -3,7 +3,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::Write,
-    net::{Ipv4Addr, SocketAddrV4},
+    net::{Ipv4Addr, SocketAddrV4}, path::Path,
 };
 
 struct TargetStates {
@@ -29,10 +29,11 @@ pub fn display(
     show_open: bool,
     show_closed: bool,
     show_filtered: bool,
+    output_path: impl AsRef<Path>,
 ) {
     let tree = get_info_tree(&open_ports, &closed_ports, &filtered_ports);
 
-    let mut file = fs::File::create("example/output.toml").unwrap();
+    let mut file = fs::File::create(output_path).unwrap();
 
     writeln!(file, "[summary]").unwrap();
     writeln!(
