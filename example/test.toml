@@ -7,10 +7,10 @@ show = { open = true, closed = false, filtered = false }
 # interface.ip = "172.28.128.236"
 # gateway.mac = "14:14:4b:7d:3f:60"
 
-# #指定IP，全部端口
-# [[target]]
-# ip = "172.31.248.26"
-# ports = "all"
+#指定IP，全部端口
+[[target]]
+ip = "172.31.248.26"
+ports = "all"
 
 # #指定IP，知名端口
 # [[target]]
@@ -42,7 +42,7 @@ show = { open = true, closed = false, filtered = false }
 # ip = { from = "172.18.3.3", to = "172.18.4.4" }
 # ports = { from = 20, to = 8088 }
 
-#指定IP范围，其余同上
-[[target]]
-ip = { from = "172.18.3.3", to = "172.18.4.4" }
-ports = "known"
+# #指定IP范围，其余同上
+# [[target]]
+# ip = { from = "172.18.3.3", to = "172.18.4.4" }
+# ports = "known"
