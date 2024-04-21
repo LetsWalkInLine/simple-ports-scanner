@@ -19,6 +19,7 @@ use pnet::{
     util::MacAddr,
 };
 use rand::Rng;
+use colored::*;
 
 mod packet;
 
@@ -43,7 +44,7 @@ pub fn scan(
     pb.set_message("SCANNING");
     pb.set_style(
         ProgressStyle::with_template(
-            "{spinner:.cyan/blue}{msg:.blue} [{elapsed}] [{wide_bar:.cyan/blue}]) [{pos}/{len}]",
+            "{spinner:.cyan/blue}{msg:.blue} [{elapsed}] [{bar:.cyan/blue}]) [{pos}/{len}]",
         )
         .unwrap()
         .progress_chars("#>-"),
@@ -61,7 +62,7 @@ pub fn scan(
         rx_thread.join().expect("receive thread error!");
     let _ = tx_thread.join().expect("send thread error");
 
-    pb.finish_with_message("DONE");
+    pb.finish_with_message("SCANNING DONE");
 
     (open_ports, closed_ports, filtered_ports)
 }
@@ -103,7 +104,7 @@ fn send(
         thread::sleep(Duration::from_micros(1));
     }
 
-    thread::sleep(Duration::from_millis(200));
+    thread::sleep(Duration::from_millis(100));
 
     DONE.store(true, Ordering::SeqCst);
 }
@@ -147,7 +148,7 @@ fn receive(
                 if is_ack_syn(tcp_flags) {
                     pb.upgrade()
                         .unwrap()
-                        .println(format!("OPEN: {}", target_socket));
+                        .println(format!("{} {}","OPEN".green().bold() , target_socket));
                     open_ports.push(target_socket);
                     target_sockets.remove(&target_socket);
 

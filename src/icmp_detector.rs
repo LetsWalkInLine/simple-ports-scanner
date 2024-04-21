@@ -1,6 +1,6 @@
 mod packet;
 
-use indicatif::{ProgressBar, WeakProgressBar};
+use indicatif::{ProgressBar, ProgressStyle, WeakProgressBar};
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
     packet::{
@@ -13,6 +13,7 @@ use pnet::{
     util::MacAddr,
 };
 
+use colored::*;
 use std::{
     net::{IpAddr, Ipv4Addr},
     sync::atomic::{AtomicBool, Ordering},
@@ -37,6 +38,14 @@ pub fn detect(
     let dest_ip_clone = dest_ips.clone();
 
     let pb = ProgressBar::new(dest_ips.len() as u64);
+    pb.set_message("DETECTING");
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.cyan/blue}{msg:.yellow} [{elapsed}] [{bar:.cyan/blue}]) [{pos}/{len}]",
+        )
+        .unwrap()
+        .progress_chars("#>-"),
+    );
     let rx_pb = pb.downgrade();
     let tx_pb = pb.downgrade();
 
@@ -49,7 +58,7 @@ pub fn detect(
     let reachable_ips = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
 
-    pb.finish_and_clear();
+    pb.finish_with_message("DETECTING DONE");
 
     reachable_ips
 }
@@ -81,7 +90,7 @@ fn send(
         thread::sleep(Duration::from_micros(1));
     }
 
-    thread::sleep(Duration::from_millis(200));
+    thread::sleep(Duration::from_millis(100));
 
     DONE.store(true, Ordering::SeqCst);
 }
@@ -117,7 +126,7 @@ fn receive_and_filter(
 
                 pb.upgrade()
                     .unwrap()
-                    .println(format!("{} is reachable", from));
+                    .println(format!("{} {}", "REACHABLE".green().bold(), from));
 
                 reachable_ips.push(from);
             }
