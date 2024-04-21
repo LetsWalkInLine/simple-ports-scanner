@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use colored::*;
 use indicatif::{ProgressBar, ProgressStyle, WeakProgressBar};
 use pnet::{
     datalink::{self, Channel, NetworkInterface},
@@ -19,7 +20,6 @@ use pnet::{
     util::MacAddr,
 };
 use rand::Rng;
-use colored::*;
 
 mod packet;
 
@@ -30,6 +30,8 @@ pub fn scan(
     gateway_mac: MacAddr,
     socket_addr: Vec<SocketAddrV4>,
 ) -> (Vec<SocketAddrV4>, Vec<SocketAddrV4>, Vec<SocketAddrV4>) {
+    println!("{} {}", "💀", "START ICMP DETECTING: ".blue().bold());
+
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().expect("interface ip error!").ip() == IpAddr::V4(interface_ip))
@@ -44,7 +46,7 @@ pub fn scan(
     pb.set_message("SCANNING");
     pb.set_style(
         ProgressStyle::with_template(
-            "{spinner:.cyan/blue}{msg:.blue} [{elapsed}] [{bar:.cyan/blue}]) [{pos}/{len}]",
+            "{spinner:.cyan/blue}{msg:.blue} [{elapsed}] [{bar:50.cyan/blue}]) [{pos}/{len}]",
         )
         .unwrap()
         .progress_chars("#>-"),
@@ -62,7 +64,7 @@ pub fn scan(
         rx_thread.join().expect("receive thread error!");
     let _ = tx_thread.join().expect("send thread error");
 
-    pb.finish_with_message("SCANNING DONE");
+    pb.finish_with_message("💀 SCANNING DONE");
 
     (open_ports, closed_ports, filtered_ports)
 }
@@ -146,9 +148,11 @@ fn receive(
                 let tcp_flags = tcp_packet.get_flags();
 
                 if is_ack_syn(tcp_flags) {
-                    pb.upgrade()
-                        .unwrap()
-                        .println(format!("{} {}","OPEN".green().bold() , target_socket));
+                    pb.upgrade().unwrap().println(format!(
+                        "{} {}",
+                        "OPEN".green().bold(),
+                        target_socket
+                    ));
                     open_ports.push(target_socket);
                     target_sockets.remove(&target_socket);
 

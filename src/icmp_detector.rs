@@ -28,6 +28,8 @@ pub fn detect(
     gateway_mac: MacAddr,
     dest_ips: Vec<Ipv4Addr>,
 ) -> Vec<Ipv4Addr> {
+    println!("{} {}", "😁", "START ICMP DETECTING: ".yellow().bold());
+
     let interface = datalink::interfaces()
         .into_iter()
         .find(|x| x.ips.first().unwrap().ip() == IpAddr::V4(interface_ip))
@@ -41,7 +43,7 @@ pub fn detect(
     pb.set_message("DETECTING");
     pb.set_style(
         ProgressStyle::with_template(
-            "{spinner:.cyan/blue}{msg:.yellow} [{elapsed}] [{bar:.cyan/blue}]) [{pos}/{len}]",
+            "{spinner:.cyan/blue}{msg:.yellow} [{elapsed}] [{bar:50.cyan/blue}]) [{pos}/{len}]",
         )
         .unwrap()
         .progress_chars("#>-"),
@@ -58,7 +60,7 @@ pub fn detect(
     let reachable_ips = rx_thread.join().unwrap();
     let _ = tx_thread.join().unwrap();
 
-    pb.finish_with_message("DETECTING DONE");
+    pb.finish_with_message("😁 DETECTING DONE ");
 
     reachable_ips
 }
