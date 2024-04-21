@@ -90,7 +90,7 @@ fn parse_profile(table: &Table) -> (Ipv4Addr, MacAddr, ShowRule) {
             false
         };
 
-        let show_closed = if let Some(closed) = show_table.get("close") {
+        let show_closed = if let Some(closed) = show_table.get("closed") {
             closed.as_bool().expect("show rules error: closed!!")
         } else {
             false
