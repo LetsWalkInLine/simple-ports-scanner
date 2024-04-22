@@ -1,21 +1,14 @@
+mod cli;
 mod config;
 mod display;
 mod icmp_detector;
 mod scanner;
 mod toml_parser;
 
-use std::{
-    env,
-    net::{Ipv4Addr, SocketAddrV4},
-};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 fn main() {
-    let mut args = env::args().skip(1);
-    let Some(profile_path) = args.next() else {
-        show_usage();
-        return;
-    };
-    let output_path = args.next().unwrap_or(String::from("output.toml"));
+    let (profile_path, output_path) = cli::get_args();
 
     // let profile = toml_parser::parse("example/test.toml");
     let profile = toml_parser::parse(profile_path);
@@ -52,16 +45,4 @@ fn get_socket_addr(dest_ips: &[Ipv4Addr], dest_ports: &[u16]) -> Vec<SocketAddrV
     }
 
     pairs
-}
-
-fn show_usage() {
-    println!(
-        "
-USAGE: syn_port_scanner [-p profile_path] [-o output_path]
-    
-OPTIONS:
-    -p profile_path     执行配置文件的路径
-    -o output_path      输出结果文件的路径名，默认值为当前目录，
-                        输出格式为toml格式"
-    );
 }
