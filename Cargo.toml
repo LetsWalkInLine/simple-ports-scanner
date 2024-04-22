@@ -2,6 +2,7 @@
 name = "syn_port_scanner"
 version = "0.1.0"
 edition = "2021"
+authors = ["HFUT(XC) 物联网工程21-1 龙威力"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
