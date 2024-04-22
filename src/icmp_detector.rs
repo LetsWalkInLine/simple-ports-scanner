@@ -128,7 +128,7 @@ fn receive_and_filter(
 
                 pb.upgrade()
                     .unwrap()
-                    .println(format!("{} {}", "REACHABLE".green().bold(), from));
+                    .println(format!("  {} {}", "REACHABLE".green().bold(), from));
 
                 reachable_ips.push(from);
             }

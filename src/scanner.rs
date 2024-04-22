@@ -149,7 +149,7 @@ fn receive(
 
                 if is_ack_syn(tcp_flags) {
                     pb.upgrade().unwrap().println(format!(
-                        "{} {}",
+                        "   {} {}",
                         "OPEN".green().bold(),
                         target_socket
                     ));
