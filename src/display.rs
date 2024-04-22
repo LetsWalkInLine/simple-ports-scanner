@@ -97,7 +97,7 @@ pub fn display(
         writeln!(file).unwrap();
     }
 
-    println!("{}: {}", "OUTPUT FILE PATH".blue().bold(), output_path);
+    println!("{}: {}", "OUTPUT FILE PATH".green().bold(), output_path);
 }
 
 fn get_info_tree(
