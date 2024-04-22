@@ -10,8 +10,13 @@ build:
 	@copy $(debug_bin) $(debug_playground)
 	@copy $(release_bin) $(release_playground)
 
-run:
-	@cd .. && make run
+run: run-debug
+
+run-debug:
+	@cd .. && make run-debug
+
+run-release:
+	@cd .. && make run-release
 
 clean:
 	@cargo clean
