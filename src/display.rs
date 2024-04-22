@@ -1,9 +1,12 @@
+use colored::Colorize;
+
 use crate::config::get_port_name;
 use std::{
     collections::BTreeMap,
-    fs,
+    fs::{self, File},
     io::Write,
-    net::{Ipv4Addr, SocketAddrV4}, path::Path,
+    net::{Ipv4Addr, SocketAddrV4},
+    path::Path,
 };
 
 struct TargetStates {
@@ -29,11 +32,18 @@ pub fn display(
     show_open: bool,
     show_closed: bool,
     show_filtered: bool,
-    output_path: impl AsRef<Path>,
+    output_path: String,
 ) {
     let tree = get_info_tree(&open_ports, &closed_ports, &filtered_ports);
 
-    let mut file = fs::File::create(output_path).unwrap();
+    let mut file = create_file(&output_path).unwrap_or_else(|e| {
+        eprintln!("{} {}", "OUTPUT FAILED: ".red().bold(), e);
+        println!(
+            "{}",
+            "REDIRECTING OUTPUT PATH TO CURRENT DIR".yellow().bold()
+        );
+        File::create("output.toml").unwrap()
+    });
 
     writeln!(file, "[summary]").unwrap();
     writeln!(
@@ -86,6 +96,8 @@ pub fn display(
 
         writeln!(file).unwrap();
     }
+
+    println!("{}: {}", "OUTPUT FILE PATH".blue().bold(), output_path);
 }
 
 fn get_info_tree(
@@ -123,4 +135,13 @@ fn get_info_tree(
     });
 
     tree
+}
+
+fn create_file(output_path: &str) -> std::io::Result<File> {
+    if let Some(parent_path) = Path::new(&output_path).parent() {
+        if !parent_path.exists() {
+            fs::create_dir_all(parent_path)?
+        }
+    }
+    fs::File::create(output_path)
 }
