@@ -113,7 +113,13 @@ fn get_info_tree(
                 v.open
                     .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
-            .or_insert(TargetStates::new());
+            .or_insert_with(|| {
+                let mut target_states = TargetStates::new();
+                target_states
+                    .open
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unknown")));
+                target_states
+            });
     });
 
     closed_ports.iter().for_each(|x| {
@@ -122,7 +128,13 @@ fn get_info_tree(
                 v.closed
                     .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
-            .or_insert(TargetStates::new());
+            .or_insert_with(|| {
+                let mut target_states = TargetStates::new();
+                target_states
+                    .closed
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unknown")));
+                target_states
+            });
     });
 
     filtered_ports.iter().for_each(|x| {
@@ -131,7 +143,13 @@ fn get_info_tree(
                 v.filtered
                     .push((x.port(), get_port_name(x.port()).unwrap_or("unKnown")))
             })
-            .or_insert(TargetStates::new());
+            .or_insert_with(|| {
+                let mut target_states = TargetStates::new();
+                target_states
+                    .filtered
+                    .push((x.port(), get_port_name(x.port()).unwrap_or("unknown")));
+                target_states
+            });
     });
 
     tree
